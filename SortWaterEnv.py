@@ -212,6 +212,7 @@ class WaterSortEnv(py_environment.PyEnvironment):
         obs = {}
         obs['observation'] = np.array(self._state, dtype=np.int32)
         obs['action_mask'] = np.array(self.action_mask(), dtype=bool)
+        #obs['action_mask'] = np.array(self.action_mask(), dtype=np.int32)
 
         return ts.restart(obs)                                        # return the initial time_step
     
@@ -223,6 +224,7 @@ class WaterSortEnv(py_environment.PyEnvironment):
         obs = {}
         obs['observation'] = np.array(self._state, dtype=np.int32)
         obs['action_mask'] = np.array(self.action_mask(), dtype=bool)
+        #obs['action_mask'] = np.array(self.action_mask(), dtype=np.int32)
         return obs
     
 
@@ -300,6 +302,7 @@ class WaterSortEnv(py_environment.PyEnvironment):
             obs = {}
             obs['observation'] = np.array(self._state, dtype=np.int32)
             obs['action_mask'] = np.array(self.action_mask(), dtype=bool)
+            #obs['action_mask'] = np.array(self.action_mask(), dtype=np.int32)
             return ts.termination(obs, reward=1)
         
         elif game_result == 'lose': # add other conditions if needed
@@ -308,6 +311,7 @@ class WaterSortEnv(py_environment.PyEnvironment):
             obs = {}
             obs['observation'] = np.array(self._state, dtype=np.int32)
             obs['action_mask'] = np.array(self.action_mask(), dtype=bool)
+            #obs['action_mask'] = np.array(self.action_mask(), dtype=np.int32)
             return ts.termination(obs, reward=-1)
         
         elif game_result == 'not over':
@@ -315,6 +319,7 @@ class WaterSortEnv(py_environment.PyEnvironment):
             obs = {}
             obs['observation'] = np.array(self._state, dtype=np.int32)
             obs['action_mask'] = np.array(self.action_mask(), dtype=bool)
+            #obs['action_mask'] = np.array(self.action_mask(), dtype=np.int32)
             return ts.transition(obs, reward=0, discount=1.0)   # change if needed
         
         else:
