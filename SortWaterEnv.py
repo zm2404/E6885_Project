@@ -39,10 +39,12 @@ class WaterSortEnv(py_environment.PyEnvironment):
 
         # self.bottles_capacity: list[int] capacity of each bottle, should be updated after each action
         # self._state: np.ndarray, shape=(num_bottles, water_level), color of each bottle
+        self.winreward = 30
         self._state, self.bottles_capacity, self.num_moves, self.num_actions = self.new_game(True, demo)
         self.initial_state = copy.deepcopy(self._state)             # self._state is an np.ndarray, we need to use deepcopy to copy it
         self.initial_capacity = copy.deepcopy(self.bottles_capacity) 
         self._episode_ended = False
+        
 
         self.demo = demo
 
@@ -111,7 +113,8 @@ class WaterSortEnv(py_environment.PyEnvironment):
                 bottles_capacity = [self.water_level]*self.num_colors + [0]*self.num_empty_bottles
             else:
                 bottles_color, bottles_capacity, maxstep = self.generate_game()
-                print(maxstep)
+                self.winreward = maxstep + 4
+                #print(maxstep)
         
         return bottles_color, bottles_capacity, 0, 0
     
@@ -206,7 +209,8 @@ class WaterSortEnv(py_environment.PyEnvironment):
         '''
         reset the environment
         '''
-        self._state, self.bottles_capacity, self.num_moves, self.num_actions = self.new_game(False, demo=self.demo)   # reset the game but not generate a new game
+        #self._state, self.bottles_capacity, self.num_moves, self.num_actions = self.new_game(False, demo=self.demo)   # reset the game but not generate a new game
+        self._state, self.bottles_capacity, self.num_moves, self.num_actions = self.new_game(True, demo=self.demo)   # reset the game and generate a new game
         self.initial_state = copy.deepcopy(self._state)                 # reset the initial state
         self._episode_ended = False                                     # reset the episode
         obs = {}
@@ -259,16 +263,17 @@ class WaterSortEnv(py_environment.PyEnvironment):
         '''
         action_mask = self.action_mask()
         if not any(action_mask):        # if all action_mask are False, then no actions can be taken and the game is over
-            self._episode_ended = True
             return 'lose'
         else:
-            if self.bottles_capacity.count(0) == self.num_empty_bottles:    # if all bottles are full except two empty bottles
+            if self.num_actions >= self.winreward:  # if the number of actions exceeds the maximum number of actions, then the game is over
+                return 'lose'
+            
+            elif self.bottles_capacity.count(0) == self.num_empty_bottles:    # if all bottles are full except two empty bottles
                 full_bottles = [i for i in range(self.num_bottles) if self.bottles_capacity[i] == self.water_level] # list of full bottles
                 for bottle in full_bottles:                         # if every single full bottle contains one color, then the game is over      
                     if not self.all_equal(self._state[bottle]):
                         return 'not over'
                     
-                self._episode_ended = True
                 return 'win'
             
             else:
@@ -287,11 +292,14 @@ class WaterSortEnv(py_environment.PyEnvironment):
         # TODO: add reward
         self.num_actions += 1
         if self._episode_ended:
-            return self._reset()
+            return self.reset()
         
         action_mask = self.action_mask()    # get the action mask
 
+        #invalid_action = 1
+        invalid_action = 0
         if action_mask[action]:             # if the action is valid
+            #invalid_action = 0
             origin_bottle, dest_bottle = self.action_detail(action)
             self.pour_water(origin_bottle, dest_bottle)
 
@@ -303,7 +311,8 @@ class WaterSortEnv(py_environment.PyEnvironment):
             obs['observation'] = np.array(self._state, dtype=np.int32)
             obs['action_mask'] = np.array(self.action_mask(), dtype=bool)
             #obs['action_mask'] = np.array(self.action_mask(), dtype=np.int32)
-            return ts.termination(obs, reward=1)
+            self._episode_ended = True
+            return ts.termination(obs, reward=self.winreward)
         
         elif game_result == 'lose': # add other conditions if needed
             # TODO: add reward
@@ -312,7 +321,8 @@ class WaterSortEnv(py_environment.PyEnvironment):
             obs['observation'] = np.array(self._state, dtype=np.int32)
             obs['action_mask'] = np.array(self.action_mask(), dtype=bool)
             #obs['action_mask'] = np.array(self.action_mask(), dtype=np.int32)
-            return ts.termination(obs, reward=-1)
+            self._episode_ended = True
+            return ts.termination(obs, reward=-(self.winreward))
         
         elif game_result == 'not over':
             # TODO: add reward
@@ -320,7 +330,7 @@ class WaterSortEnv(py_environment.PyEnvironment):
             obs['observation'] = np.array(self._state, dtype=np.int32)
             obs['action_mask'] = np.array(self.action_mask(), dtype=bool)
             #obs['action_mask'] = np.array(self.action_mask(), dtype=np.int32)
-            return ts.transition(obs, reward=0, discount=1.0)   # change if needed
+            return ts.transition(obs, reward=-1-invalid_action, discount=1.0)   # change if needed
         
         else:
             raise ValueError('game_result is not valid')
