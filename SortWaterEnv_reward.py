@@ -138,55 +138,49 @@ class WaterSortEnv(py_environment.PyEnvironment):
         return bottles_color
     
 
-    def generate_game(self) -> np.ndarray:
+    def generate_game(self,maxsteps:int=30) -> np.ndarray:
         '''
         generate a new game randomly
         '''
-        ########### Initialize the bottles ############
+        #bottles_color = [[]*self.num_bottles]   # 每个瓶子中的颜色
         bottles_color = np.zeros((self.num_bottles, self.water_level), dtype=int)   # no appropriate algorithm yet
         bottles_capacity = [self.water_level]*self.num_colors + [0]*self.num_empty_bottles
         for i in range(self.num_colors):
             bottles_color[i]=[i+1]*self.water_level
             bottles_capacity[i]=self.water_level
-        finalresult=()
-        for i in range(100):
-            curspace=self.actspace.copy()
-            stepcnt=0
-            bottle_input=bottles_color.copy()
-            volume_input=bottles_capacity.copy()
-            finalresult=self.random_valid_state(bottle_input,volume_input,curspace,stepcnt)
-            if finalresult:
-                break
-        if finalresult:
-            return finalresult[0],finalresult[1],finalresult[2]
-        else:
-            return [],[],0
-        
+        actspace=[]
+        for i in range(self.num_bottles):
+            for j in range(self.num_bottles):
+                if i!=j:
+                    actspace.append((i,j))
 
-    def random_valid_state(self,bottle:np.ndarray,volume:list,curspace:list,stepcnt:int):
-        if np.sum(np.all(bottle == 0, axis=1)) == self.num_empty_bottles and stepcnt >= self.minsteps:
-            return bottle,volume,stepcnt
-        if len(curspace)==0:
-            return False
-        f,t=random.choice(curspace)
-        num=random.choice([2,1])
-        actionable,bottle,volume=self.revert_action(bottle,volume,f,t,num)
-        if actionable:
-            curspace=self.actspace.copy()
-            curspace.remove((f,t))
-            curspace.remove((t,f))
-            stepcnt+=1
-        else:
-            curspace.remove((f,t))
-        return self.random_valid_state(bottle,volume,curspace,stepcnt)
+        end=0
+        f=0
+        t=0
+        for i in range(maxsteps):
+            curspace=actspace.copy()
+            if i>0:
+                curspace.remove((f,t))
+                curspace.remove((t,f))
+            f,t=random.choice(curspace)
+            num=random.choice([1,2])
+            while not self.revert_action(bottles_color,bottles_capacity,f,t,num):
+                #print("curspace:"+str(len(curspace)))
+                curspace.remove((f,t))
+                if len(curspace)==0:
+                    end=1
+                    break
+                f,t=random.choice(curspace)
+                num=random.choice([1,2])
+            if end:
+                break
+        return bottles_color,bottles_capacity,i
         
-        
-    def revert_action(self, bottles_color:np.ndarray, bottles_capacity:list, f:int, t:int, num:int):
-        
+    def revert_action(self,bottles_color,bottles_capacity,f,t,num):
         if bottles_capacity[t]==self.water_level:
-            return False,bottles_color,bottles_capacity
+            return False
         if bottles_capacity[f]==0:
-            return False,bottles_color,bottles_capacity
+            return False
         process=False
         if bottles_capacity[f]==1:
             process=True
@@ -213,8 +207,8 @@ class WaterSortEnv(py_environment.PyEnvironment):
                     cnt+=1
                 else:
                     break
-            return True, bottles_color, bottles_capacity
-        return False, bottles_color, bottles_capacity
+            return True
+        return False
 
 
     def _reset(self):
